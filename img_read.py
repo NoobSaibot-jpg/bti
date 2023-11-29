@@ -54,30 +54,36 @@ def str_type(str):
 
 
 
-def add_to_db(box, barcode, strtype):
-    # db_host = input("Укажіть хост: ")
-    # db_user = input("укажіть користувача: ")
-    # db_password = input("Укажіть пароль: ")
-    mydb = mysql.connector.connect(
-    host="localhost",
-    user="root",
-    password="",
-    database="bti"
-    )
-
+def connect_to_database(host, user, password, database):
+    try:
+        mydb = mysql.connector.connect(
+            host=host,
+            user=user,
+            password=password,
+            database=database
+        )
+        return mydb
+    except mysql.connector.Error as err:
+        print(f"Ошибка подключения к базе данных: {err}")
+        return None
+    
+def add_to_db(box, barcode, strtype, mydb):
     mycursor = mydb.cursor()
-    mycursor.execute(f'''
-                 UPDATE `cases` 
-                 SET case_box = {box}
-                  WHERE case_barcode = {barcode}
-                 ''')
-    mycursor.execute(f'''
-                 UPDATE `cases` 
-                 SET case_strtype = {strtype}
-                  WHERE case_barcode = {barcode}
-                 ''')
-    mydb.commit()
-    mydb.close()
+    try:
+        mycursor.execute(
+            "UPDATE `cases` SET case_box = %s WHERE case_barcode = %s",
+            (box, barcode)
+        )
+        mycursor.execute(
+            "UPDATE `cases` SET case_strtype = %s WHERE case_barcode = %s",
+            (strtype, barcode)
+        )
+        mydb.commit()
+        console.print("Дані успішно оновленні в базі даних \n", style='white on green')
+    except mysql.connector.Error as err:
+        console.print(f"Помилка при оновленні даних: {err} :warning \n", style='white on red')
+    finally:
+        mycursor.close()
 
 def read_img(file_name):
     img = PIL.Image.open(file_name)
@@ -93,24 +99,32 @@ def read_img(file_name):
 
 output_file = open("output.txt", "w", encoding="utf-8")
 
+def get_database_credentials():
+    host = input("Укажіть хост: ")
+    user = input("Укажіть користувача: ")
+    password = input("Укажіть пароль: ")
+    database = "bti"
+    return host, user, password, database
+
+host, user, password, database = get_database_credentials()
+mydb = connect_to_database(host, user, password, database)
+
 for i in folders:
     try:
         if len(i) == 13 and len(os.listdir(os.path.join(folder_selected, i))) == 0:
-            # move_directory(os.path.join(folder_selected, i), f'{folder_selected}\\Проблемни')
             console.print(
-                f'{i} - папка пуста, перемещена в директорию с проблемами', style='white on red')
+                f'{i} - Порожня папка', style='white on red')
         elif len(i) != 13 and os.path.isdir(os.path.join(folder_selected, i)):
-            console.print(f'{i} - это папка, но нет дела')
+            console.print(f'{i} - не справа')
         elif os.path.isfile(os.path.join(folder_selected, i)):
-            console.print(f'{i} - это файл')
+            console.print(f'{i} - не справа')
         elif len(i) == 13 and len(os.listdir(os.path.join(folder_selected, i))) > 0:
             if os.path.splitext(os.listdir(os.path.join(folder_selected, i))[0])[1] == exten:
                 data = read_img(os.path.join(folder_selected, i, os.listdir(os.path.join(folder_selected, i))[0]))
 
                 if len(data) == 0 or len(data[0]) == 0 or len(data[1]) == 0:
                     console.print(
-                        f'{i}: не удалось прочитать изображение, перемещено в директорию с проблемами :warning:', style='white on red')
-                    # move_directory(os.path.join(folder_selected, i), f'{folder_selected}\\Проблемни')
+                        f'{i}: не вдалося розпізнати зображення :warning:', style='white on red')
                 elif len(data) > 0:
                     box = str(data[0])
                     b_index = box.find('.')
@@ -119,15 +133,15 @@ for i in folders:
                     st_index = st.find('.')
                     cut_str = str_type(st[2:st_index:].strip('.'))
                     console.print(
-                        f'Дело {i}:  успешно! {cut_box}, {cut_str}    перемещено в папку "Подписаные"', style='white on green')
-                    output_file.write(f'Дело {i}: {data}\n')
-                    add_to_db(box = cut_box, barcode = i, strtype=cut_str)
-                    # move_directory(os.path.join(folder_selected, i), f'{folder_selected}\\Подписаные')
+                        f'Справа {i}:  успішно ріспізнано {cut_box}, {cut_str}"', style='white on green')
+                    output_file.write(f'Справа {i}: {data}\n')
+                    add_to_db(cut_box, i, cut_str, mydb)
             else:
-                print(f'{i} - это не изображение')
+                print(f'{i}')
     except Exception as e:
-        print("Exception occurred:", e)
-
+        console.print("Exception occurred:", e, style='white on red')
+if mydb:
+    mydb.close()
 output_file.close()
-root.mainloop()
+input()
 
