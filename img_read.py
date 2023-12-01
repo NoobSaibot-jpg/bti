@@ -103,17 +103,32 @@ def get_database_credentials():
     host = input("Укажіть хост: ")
     user = input("Укажіть користувача: ")
     password = input("Укажіть пароль: ")
-    database = "bti"
+    database = input("Укажіть базу: ")
     return host, user, password, database
 
 host, user, password, database = get_database_credentials()
 mydb = connect_to_database(host, user, password, database)
 
+def get_column_value(barcode, mydb):
+    mycursor = mydb.cursor()
+    try:
+        mycursor.execute("SELECT case_box FROM cases WHERE case_barcode = %s", (barcode,))
+        result = mycursor.fetchone()  # Получение одной строки результата
+        if result:
+            column_value = result[0]  # Значение столбца из первой строки
+            return column_value
+        else:
+            return None
+    except mysql.connector.Error as err:
+        print({err})
+        return None
+
 for i in folders:
     try:
         if len(i) == 13 and len(os.listdir(os.path.join(folder_selected, i))) == 0:
             console.print(
-                f'{i} - Порожня папка', style='white on red')
+                f'{i} - Порожня папка :warning: ', style='white on red')
+            output_file.write(f'Справа {i}: порожня папка\n')
         elif len(i) != 13 and os.path.isdir(os.path.join(folder_selected, i)):
             console.print(f'{i} - не справа')
         elif os.path.isfile(os.path.join(folder_selected, i)):
@@ -124,22 +139,28 @@ for i in folders:
 
                 if len(data) == 0 or len(data[0]) == 0 or len(data[1]) == 0:
                     console.print(
-                        f'{i}: не вдалося розпізнати зображення :warning:', style='white on red')
+                        f'{i}: не вдалося розпізнати зображення :warning: ', style='white on red')
+                    output_file.write(f'Справа {i}: не вдалося розпізнати\n')
                 elif len(data) > 0:
-                    box = str(data[0])
-                    b_index = box.find('.')
-                    cut_box = box[b_index:-2].strip('.')
-                    st = str(data[1])
-                    st_index = st.find('.')
-                    cut_str = str_type(st[2:st_index:].strip('.'))
-                    console.print(
-                        f'Справа {i}:  успішно ріспізнано {cut_box}, {cut_str}"', style='white on green')
-                    output_file.write(f'Справа {i}: {data}\n')
-                    add_to_db(cut_box, i, cut_str, mydb)
+                    column_value = get_column_value(i, mydb)
+                    if column_value:
+                        console.print(f"Справа {i} можливо дубль штрихкодів :warning: ", style='white on red')
+                        output_file.write(f'Справа {i}: можливо дубль\n')
+                    else:
+                        box = str(data[0])
+                        b_index = box.find('.')
+                        cut_box = box[b_index:-2].strip('.')
+                        st = str(data[1])
+                        st_index = st.find('.')
+                        cut_str = str_type(st[2:st_index:].strip('.'))
+                        console.print(
+                            f'Справа {i}:  успішно ріспізнано {cut_box}, {cut_str}"', style='white on green')
+                        output_file.write(f'Справа {i}: {data}\n')
+                        add_to_db(cut_box, i, cut_str, mydb)
             else:
                 print(f'{i}')
     except Exception as e:
-        console.print("Exception occurred:", e, style='white on red')
+        console.print("Exception occurred:", e, style='white on red :warning: ')
 if mydb:
     mydb.close()
 output_file.close()

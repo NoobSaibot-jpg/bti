@@ -1,7 +1,7 @@
 # import shutil
 # import re
-# import pytesseract
-# from PIL import Image, ImageEnhance
+import pytesseract
+from PIL import Image, ImageEnhance
 import os
 from tkinter import filedialog
 from tkinter import *
@@ -26,10 +26,43 @@ mydb = mysql.connector.connect(
 # Создаем курсор для выполнения запросов
 mycursor = mydb.cursor()
 
+
+
+# def get_column_value(barcode, mydb):
+#     mycursor = mydb.cursor()
+#     try:
+#         mycursor.execute("SELECT case_box FROM cases WHERE case_barcode = %s", (barcode,))
+#         result = mycursor.fetchone()  # Получение одной строки результата
+#         if result:
+#             column_value = result[0]  # Значение столбца из первой строки
+#             return column_value
+#         else:
+#             return None
+#     except mysql.connector.Error as err:
+#         print({err})
+#         return None
+
+# Использование функции для получения значения столбца
+# barcode = '2800003547831'
+# column_value = get_column_value(barcode, mydb)
+# if column_value:
+#     print(f"Значение столбца: {column_value}")
+# else:
+#     print("Данные не найдены или произошла ошибка")
+
 # ... (ваш код после этого)
 # UPDATE название_таблицы
 # SET имя_поля = 'новое_значение'
 # WHERE условие;
+
+# def value():
+#     a = mycursor.execute('''
+#              SELECT case_box FROM `cases` WHERE case_id =37029394
+#              ''')
+#     return a
+
+# print(value())
+
 
 
 mycursor.execute('''
@@ -42,6 +75,8 @@ mycursor.execute('''
              SET case_strtype = ""
              ''')
 
+mydb.commit()
+mydb.close()
 
 # Получаем результаты запроса
 # myresult = mycursor.fetchall()
@@ -73,8 +108,7 @@ mycursor.execute('''
 #     else:
 #         print(f'{folder} - это не изображение')
 
-mydb.commit()
-mydb.close()
+
 
 # pattern_fl = r"кв\.?\s*\d+"
 # pattern_str = r'\b(бул|вул|ква|наб|площ|про|туп|уз|шос)\b'
@@ -83,11 +117,10 @@ mydb.close()
 #     img = PIL.Image.open(file_name)
 #     pytesseract.pytesseract.tesseract_cmd = tess_path
 #     text = pytesseract.image_to_string(img, lang='ukr')
-#     list_text = list(text.split('\n'))
-#     fl = [item for item in list_text if re.search(pattern_fl, item)]
-#     st = [item for item in list_text if re.search(pattern_str, item)]
-#     return fl, st
+#     return text
 
+
+# print(read_img('IMG_4912.jpg'))
 # output_file = open("output.txt", "w", encoding="utf-8")
 
 # for i in folders:
