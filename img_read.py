@@ -1,9 +1,7 @@
-import shutil
+import os
 import re
 import pytesseract
 import PIL.Image
-
-import os
 from rich.console import Console
 from tkinter import filedialog
 from tkinter import *
@@ -11,13 +9,11 @@ import mysql.connector
 
 console = Console()
 dir = os.getcwd()
+console.print('Busines', style= 'bold black on white', justify='center')
 
 root = Tk()
 root.withdraw()
 folder_selected = filedialog.askdirectory()
-
-def move_directory(fold, dist):
-    shutil.move(fold, dist)
 
 tess_path = f'{dir}\\tess\\tesseract.exe'
 exten = '.jpg'
@@ -64,7 +60,7 @@ def connect_to_database(host, user, password, database):
         )
         return mydb
     except mysql.connector.Error as err:
-        print(f"Ошибка подключения к базе данных: {err}")
+        console.log(f"Ошибка подключения к базе данных: {err}", log_locals = True)
         return None
     
 def add_to_db(box, barcode, strtype, mydb):
@@ -79,9 +75,9 @@ def add_to_db(box, barcode, strtype, mydb):
             (strtype, barcode)
         )
         mydb.commit()
-        console.print("Дані успішно оновленні в базі даних \n", style='white on green')
+        console.log("Дані успішно оновленні в базі даних \n", style='white on green')
     except mysql.connector.Error as err:
-        console.print(f"Помилка при оновленні даних: {err} :warning \n", style='white on red')
+        console.log(f"Помилка при оновленні даних: {err} :warning \n", style='white on red')
     finally:
         mycursor.close()
 
@@ -126,25 +122,25 @@ def get_column_value(barcode, mydb):
 for i in folders:
     try:
         if len(i) == 13 and len(os.listdir(os.path.join(folder_selected, i))) == 0:
-            console.print(
-                f'{i} - Порожня папка :warning: ', style='white on red')
+            console.log(
+                f'{i} - Порожня папка :warning: \n', style='white on red')
             output_file.write(f'Справа {i}: порожня папка\n')
         elif len(i) != 13 and os.path.isdir(os.path.join(folder_selected, i)):
-            console.print(f'{i} - не справа')
+            console.log(f'{i} - не справа \n')
         elif os.path.isfile(os.path.join(folder_selected, i)):
-            console.print(f'{i} - не справа')
+            console.log(f'{i} - не справа \n')
         elif len(i) == 13 and len(os.listdir(os.path.join(folder_selected, i))) > 0:
             if os.path.splitext(os.listdir(os.path.join(folder_selected, i))[0])[1] == exten:
                 data = read_img(os.path.join(folder_selected, i, os.listdir(os.path.join(folder_selected, i))[0]))
 
                 if len(data) == 0 or len(data[0]) == 0 or len(data[1]) == 0:
-                    console.print(
-                        f'{i}: не вдалося розпізнати зображення :warning: ', style='white on red')
+                    console.log(
+                        f'{i}: не вдалося розпізнати зображення :warning: \n', style='white on red')
                     output_file.write(f'Справа {i}: не вдалося розпізнати\n')
                 elif len(data) > 0:
                     column_value = get_column_value(i, mydb)
                     if column_value:
-                        console.print(f"Справа {i} можливо дубль штрихкодів :warning: ", style='white on red')
+                        console.log(f"Справа {i} можливо дубль штрихкодів :warning: \n", style='white on red')
                         output_file.write(f'Справа {i}: можливо дубль\n')
                     else:
                         box = str(data[0])
@@ -153,14 +149,14 @@ for i in folders:
                         st = str(data[1])
                         st_index = st.find('.')
                         cut_str = str_type(st[2:st_index:].strip('.'))
-                        console.print(
-                            f'Справа {i}:  успішно ріспізнано {cut_box}, {cut_str}"', style='white on green')
+                        console.log(
+                            f'Справа {i}:  успішно ріспізнано {cut_box}, {cut_str} \n', style='white on green')
                         output_file.write(f'Справа {i}: {data}\n')
                         add_to_db(cut_box, i, cut_str, mydb)
             else:
                 print(f'{i}')
     except Exception as e:
-        console.print("Exception occurred:", e, style='white on red :warning: ')
+        console.log("Exception occurred:", e, style='white on red :warning: \n')
 if mydb:
     mydb.close()
 output_file.close()
