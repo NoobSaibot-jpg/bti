@@ -17,15 +17,11 @@ from tkinter import *
 
 
 mydb = mysql.connector.connect(
-    host="localhost",
-    user="root",
-    password="",
-    database="bti"
+    host="localhost", user="root", password="", database="bti"
 )
 
 # Создаем курсор для выполнения запросов
 mycursor = mydb.cursor()
-
 
 
 # def get_column_value(barcode, mydb):
@@ -64,16 +60,19 @@ mycursor = mydb.cursor()
 # print(value())
 
 
-
-mycursor.execute('''
+mycursor.execute(
+    """
              UPDATE `cases` 
              SET case_box = ""
-             ''')
+    """
+)
 
-mycursor.execute('''
+mycursor.execute(
+    """
              UPDATE `cases` 
              SET case_strtype = ""
-             ''')
+    """
+)
 
 mydb.commit()
 mydb.close()
@@ -107,7 +106,6 @@ mydb.close()
 #                  ''')
 #     else:
 #         print(f'{folder} - это не изображение')
-
 
 
 # pattern_fl = r"кв\.?\s*\d+"

@@ -1,7 +1,7 @@
 import os
 import re
 import pytesseract
-import PIL.Image
+from PIL import Image as PILImage
 from rich.console import Console
 from tkinter import filedialog
 from tkinter import *
@@ -9,7 +9,7 @@ import mysql.connector
 
 console = Console()
 dir = os.getcwd()
-console.print('Busines', style= 'bold black on white', justify='center')
+console.print('Busines', style= 'bold black on white', justify='center', overflow='crop')
 
 root = Tk()
 root.withdraw()
@@ -21,7 +21,7 @@ exten = '.jpg'
 folders = os.listdir(folder_selected)
 
 pattern_fl = r"кв\.?\s*\d+"
-pattern_str = r'\b(бул|вул|кв|наб|пл|пров|туп|уз|шос|пр-кт)\b'
+pattern_str = r'\b(бул|вул|ква|наб|пл|пров|туп|уз|шос|пр-кт)\b'
 
 def str_type(str):
     if str == 'бул':
@@ -75,14 +75,14 @@ def add_to_db(box, barcode, strtype, mydb):
             (strtype, barcode)
         )
         mydb.commit()
-        console.log("Дані успішно оновленні в базі даних \n", style='white on green')
+        console.log("Дані успішно оновленні в базі даних \n", style='green')
     except mysql.connector.Error as err:
-        console.log(f"Помилка при оновленні даних: {err} :warning \n", style='white on red')
+        console.log(f"Помилка при оновленні даних: {err} :warning \n", style='red')
     finally:
         mycursor.close()
 
 def read_img(file_name):
-    img = PIL.Image.open(file_name)
+    img = PILImage.open(file_name)
     pytesseract.pytesseract.tesseract_cmd = tess_path
     text = pytesseract.image_to_string(img, lang='ukr')
     list_text = list(text.split('\n'))
@@ -92,6 +92,7 @@ def read_img(file_name):
         return fl, st
     else:
         return []
+        
 
 output_file = open("output.txt", "w", encoding="utf-8")
 
@@ -120,45 +121,56 @@ def get_column_value(barcode, mydb):
         return None
 
 for i in folders:
-    try:
-        if len(i) == 13 and len(os.listdir(os.path.join(folder_selected, i))) == 0:
-            console.log(
-                f'{i} - Порожня папка :warning: \n', style='white on red')
-            output_file.write(f'Справа {i}: порожня папка\n')
-        elif len(i) != 13 and os.path.isdir(os.path.join(folder_selected, i)):
-            console.log(f'{i} - не справа \n')
-        elif os.path.isfile(os.path.join(folder_selected, i)):
-            console.log(f'{i} - не справа \n')
-        elif len(i) == 13 and len(os.listdir(os.path.join(folder_selected, i))) > 0:
-            if os.path.splitext(os.listdir(os.path.join(folder_selected, i))[0])[1] == exten:
-                data = read_img(os.path.join(folder_selected, i, os.listdir(os.path.join(folder_selected, i))[0]))
-
-                if len(data) == 0 or len(data[0]) == 0 or len(data[1]) == 0:
-                    console.log(
-                        f'{i}: не вдалося розпізнати зображення :warning: \n', style='white on red')
-                    output_file.write(f'Справа {i}: не вдалося розпізнати\n')
-                elif len(data) > 0:
-                    column_value = get_column_value(i, mydb)
-                    if column_value:
-                        console.log(f"Справа {i} можливо дубль штрихкодів :warning: \n", style='white on red')
-                        output_file.write(f'Справа {i}: можливо дубль\n')
-                    else:
-                        box = str(data[0])
-                        b_index = box.find('.')
-                        cut_box = box[b_index:-2].strip('.')
-                        st = str(data[1])
-                        st_index = st.find('.')
-                        cut_str = str_type(st[2:st_index:].strip('.'))
+    with console.status(f"[green]Обробка справи: [blue bold]{i}[/blue bold]", spinner='arc'):
+        try:
+            if len(i) == 13 and len(os.listdir(os.path.join(folder_selected, i))) == 0:
+                console.log(
+                    f'{i} - Порожня папка :warning: \n', style='red')
+                console.rule("")
+                output_file.write(f'Справа {i}: порожня папка\n')
+            elif len(i) != 13 and os.path.isdir(os.path.join(folder_selected, i)):
+                console.log(f'{i} - не справа \n')
+                console.rule("")
+            elif os.path.isfile(os.path.join(folder_selected, i)):
+                console.log(f'{i} - не справа \n')
+                console.rule("")
+            elif len(i) == 13 and len(os.listdir(os.path.join(folder_selected, i))) > 0:
+                if os.path.splitext(os.listdir(os.path.join(folder_selected, i))[0])[1] == exten:
+                    data = read_img(os.path.join(folder_selected, i, os.listdir(os.path.join(folder_selected, i))[0]))
+                    if len(data) == 0 or len(data[0]) == 0 or len(data[1]) == 0:
                         console.log(
-                            f'Справа {i}:  успішно ріспізнано {cut_box}, {cut_str} \n', style='white on green')
-                        output_file.write(f'Справа {i}: {data}\n')
-                        add_to_db(cut_box, i, cut_str, mydb)
-            else:
-                print(f'{i}')
-    except Exception as e:
-        console.log("Exception occurred:", e, style='white on red :warning: \n')
+                            f'{i}: не вдалося розпізнати зображення :warning: \n', style='red')
+                        console.rule("")
+                        output_file.write(f'Справа {i}: не вдалося розпізнати\n')
+                    elif len(data) > 0:
+                        column_value = get_column_value(i, mydb)
+                        if column_value:
+                            console.log(f"Справа {i} можливо дубль штрихкодів :warning: \n", style='red')
+                            console.rule("")
+                            output_file.write(f'Справа {i}: можливо дубль\n')
+                        else:
+                            box = str(data[0])
+                            b_index = box.find('.')
+                            cut_box = box[b_index:-2].strip('.')
+                            st = str(data[1])
+                            st_index = st.find('.')
+                            cut_str = str_type(st[2:st_index:].strip('.'))
+                            console.log(
+                                f'Справа {i}:  успішно ріспізнано {cut_box}, {cut_str} \n', style='green')
+                            output_file.write(f'Справа {i}: {data}\n')
+                            add_to_db(cut_box, i, cut_str, mydb)
+                            console.rule("")
+                else:
+                    print(f'{i}')
+        except Exception as e:
+            console.log("Exception occurred:", e, style='red')
+
+
 if mydb:
     mydb.close()
 output_file.close()
 input()
+
+
+
 
